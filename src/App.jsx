@@ -112,6 +112,79 @@ function KeuzeScherm({ onKies }) {
   );
 }
 
+
+// ─── PIN / WACHTWOORD SCHERM ─────────────────────────────────────────────────
+function PinScherm({ titel, subtitel, avatar, kleur, onSuccess, onTerug, isNieuw }) {
+  const [pin, setPin] = useState("");
+  const [bevestig, setBevestig] = useState("");
+  const [fout, setFout] = useState("");
+  const [stap, setStap] = useState(isNieuw ? "nieuw" : "invoer"); // "nieuw" | "bevestig" | "invoer"
+
+  function handleCijfer(c) {
+    setFout("");
+    if (stap === "nieuw" && pin.length < 4) {
+      const nieuw = pin + c;
+      setPin(nieuw);
+      if (nieuw.length === 4) setStap("bevestig");
+    } else if (stap === "bevestig" && bevestig.length < 4) {
+      const b = bevestig + c;
+      setBevestig(b);
+      if (b.length === 4) {
+        if (b === pin) { onSuccess(pin); }
+        else { setFout("Pincodes komen niet overeen. Probeer opnieuw."); setPin(""); setBevestig(""); setStap("nieuw"); }
+      }
+    } else if (stap === "invoer" && pin.length < 4) {
+      const nieuw = pin + c;
+      setPin(nieuw);
+      if (nieuw.length === 4) onSuccess(nieuw);
+    }
+  }
+
+  function handleVerwijder() {
+    if (stap === "bevestig" && bevestig.length > 0) setBevestig(b => b.slice(0,-1));
+    else setPin(p => p.slice(0,-1));
+  }
+
+  const huidigPin = stap === "bevestig" ? bevestig : pin;
+
+  return (
+    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0F1923 0%, #162233 60%, #0F1923 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", color: "#E8EDF2", padding: "24px" }}>
+      <button onClick={onTerug} style={{ position: "absolute", top: "20px", left: "20px", background: "none", border: "none", color: "#7A9AB5", cursor: "pointer", fontSize: "20px" }}>←</button>
+
+      {avatar && (
+        <div style={{ width: "72px", height: "72px", borderRadius: "50%", background: kleur || "#4A9EE0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "28px", fontWeight: "bold", color: "#0F1923", marginBottom: "16px" }}>
+          {avatar}
+        </div>
+      )}
+      <h2 style={{ fontSize: "22px", fontWeight: "bold", margin: "0 0 6px", textAlign: "center" }}>{titel}</h2>
+      <p style={{ color: "#7A9AB5", margin: "0 0 32px", fontSize: "14px", textAlign: "center", maxWidth: "280px", lineHeight: "1.5" }}>
+        {stap === "nieuw" ? "Kies een 4-cijferige pincode" : stap === "bevestig" ? "Voer de pincode nogmaals in ter bevestiging" : subtitel}
+      </p>
+
+      {fout && <div style={{ background: "rgba(224,85,85,0.15)", border: "1px solid rgba(224,85,85,0.3)", borderRadius: "10px", padding: "10px 16px", fontSize: "13px", color: "#E05555", marginBottom: "20px", textAlign: "center" }}>{fout}</div>}
+
+      {/* Pin dots */}
+      <div style={{ display: "flex", gap: "16px", marginBottom: "40px" }}>
+        {[0,1,2,3].map(i => (
+          <div key={i} style={{ width: "18px", height: "18px", borderRadius: "50%", background: i < huidigPin.length ? (kleur || "#4A9EE0") : "rgba(255,255,255,0.1)", border: `2px solid ${i < huidigPin.length ? (kleur || "#4A9EE0") : "rgba(255,255,255,0.2)"}`, transition: "all 0.15s" }} />
+        ))}
+      </div>
+
+      {/* Numpad */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 72px)", gap: "12px" }}>
+        {[1,2,3,4,5,6,7,8,9,"",0,"⌫"].map((c, i) => (
+          <button key={i} onClick={() => c === "⌫" ? handleVerwijder() : c !== "" ? handleCijfer(String(c)) : null}
+            style={{ width: "72px", height: "72px", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.1)", background: c === "" ? "transparent" : "rgba(255,255,255,0.06)", color: "#E8EDF2", fontSize: c === "⌫" ? "20px" : "22px", fontFamily: "Georgia, serif", cursor: c === "" ? "default" : "pointer", transition: "all 0.15s" }}
+            onMouseEnter={e => { if (c !== "") e.currentTarget.style.background = "rgba(255,255,255,0.12)"; }}
+            onMouseLeave={e => { if (c !== "") e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}>
+            {c}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── WERKNEMER KEUZE (welke werknemer ben jij?) ──────────────────────────────
 function WerknemerKeuze({ werknemers, onKies, onTerug }) {
   return (
@@ -138,10 +211,11 @@ function WerknemerKeuze({ werknemers, onKies, onTerug }) {
               <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: w.kleur, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: "bold", color: "#0F1923", flexShrink: 0 }}>
                 {w.naam.charAt(0)}
               </div>
-              <div>
+              <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: "bold", fontSize: "14px", color: "#E8EDF2" }}>{w.naam}</div>
                 {w.afdelingen.length > 0 && <div style={{ fontSize: "11px", color: "#7A9AB5", marginTop: "2px" }}>{w.afdelingen.join(", ")}</div>}
               </div>
+              <div style={{ fontSize: "14px", opacity: 0.5 }}>{w.pin ? "🔒" : "🔓"}</div>
             </button>
           ))}
         </div>
@@ -306,13 +380,16 @@ function WerknemerPortaal({ werknemer, aanvragen, werknemers, onNieuweAanvraag, 
 
 // ─── HOOFD APP ───────────────────────────────────────────────────────────────
 export default function VakantieApp() {
-  const [scherm, setScherm]         = useState("keuze"); // "keuze" | "werknemerKeuze" | "werknemerPortaal" | "admin"
+  const [scherm, setScherm]         = useState("keuze"); // "keuze" | "werknemerKeuze" | "werknemerPin" | "werknemerPortaal" | "adminPin" | "admin"
   const [actiefWerknemer, setActiefWerknemer] = useState(null);
+  const ADMIN_PIN_KEY = "vakantieflow:adminpin";
+  const [adminPin, setAdminPin] = useState(() => { try { return localStorage.getItem(ADMIN_PIN_KEY) || null; } catch(e) { return null; } });
   const [werknemers, setWerknemers] = useState(WERKNEMERS_INIT);
   const [aanvragen, setAanvragen]   = useState(AANVRAGEN_INIT);
   const [geladen, setGeladen]       = useState(false);
   const [opslagStatus, setOpslagStatus] = useState(null);
-
+  const [debugLog, setDebugLog] = useState([]);
+  const log = (msg) => setDebugLog(prev => [...prev.slice(-6), msg]);
 
   // Admin state
   const [adminSub, setAdminSub] = useState("aanvragen");
@@ -341,21 +418,21 @@ export default function VakantieApp() {
   useEffect(() => {
     async function laadData() {
       try {
-        console.log("🔵 Laden...");
+        log("🔵 Verbinding maken...");
         const [wRes, aRes] = await Promise.all([
           fetch(SUPABASE_URL + "/rest/v1/werknemers?select=id,data&order=id", { headers: HEADERS }),
           fetch(SUPABASE_URL + "/rest/v1/aanvragen?select=id,data&order=id",  { headers: HEADERS }),
         ]);
-        console.log("Status W:", wRes.status, "A:", aRes.status);
+        log("🔵 W-status: " + wRes.status + " A-status: " + aRes.status);
         const wRows = await wRes.json();
         const aRows = await aRes.json();
-        console.log("Rijen W:", wRows?.length, "A:", aRows?.length);
+        log("🔵 Rijen: W=" + (Array.isArray(wRows) ? wRows.length : JSON.stringify(wRows).slice(0,60)) + " A=" + (Array.isArray(aRows) ? aRows.length : JSON.stringify(aRows).slice(0,60)));
         if (Array.isArray(wRows) && wRows.length > 0)
           setWerknemers(wRows.map(r => ({ ...r.data, id: r.id })));
         if (Array.isArray(aRows) && aRows.length > 0)
           setAanvragen(aRows.map(r => ({ ...r.data, id: r.id })));
       } catch (e) {
-        console.error("Laden mislukt:", e);
+        log("❌ Laden mislukt: " + e.message);
       }
       setGeladen(true);
     }
@@ -368,7 +445,7 @@ export default function VakantieApp() {
     try {
       const upsertHeaders = { ...HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal" };
 
-      console.log("Opslaan...");
+      log("🟡 Opslaan: " + nieuweWerknemers.length + " werknemers, " + nieuweAanvragen.length + " aanvragen");
       // Sla alle werknemers op via upsert
       for (const w of nieuweWerknemers) {
         const r = await fetch(SUPABASE_URL + "/rest/v1/werknemers", {
@@ -376,7 +453,8 @@ export default function VakantieApp() {
           headers: upsertHeaders,
           body: JSON.stringify({ id: w.id, data: w }),
         });
-        if (!r.ok) { const t = await r.text(); console.error("W fout:", r.status, t); }
+        if (!r.ok) { const t = await r.text(); log("❌ W-fout " + r.status + ": " + t.slice(0,80)); }
+        else log("✅ W opgeslagen: " + w.naam);
       }
 
       // Sla alle aanvragen op via upsert
@@ -386,7 +464,8 @@ export default function VakantieApp() {
           headers: upsertHeaders,
           body: JSON.stringify({ id: a.id, data: a }),
         });
-        if (!r.ok) { const t = await r.text(); console.error("A fout:", r.status, t); }
+        if (!r.ok) { const t = await r.text(); log("❌ A-fout " + r.status + ": " + t.slice(0,80)); }
+        else log("✅ Aanvraag opgeslagen");
       }
 
       // Verwijder werknemers die niet meer bestaan
@@ -407,7 +486,7 @@ export default function VakantieApp() {
 
       setOpslagStatus("opgeslagen");
     } catch (e) {
-      console.error("Opslaan fout:", e);
+      log("❌ Algemene fout: " + e.message);
       setOpslagStatus("fout");
     }
     setTimeout(() => setOpslagStatus(null), 2500);
@@ -463,16 +542,74 @@ export default function VakantieApp() {
   );
 
   // ── Keuze scherm ──
-  if (scherm === "keuze") return <KeuzeScherm onKies={k => setScherm(k === "werknemer" ? "werknemerKeuze" : "admin")} />;
+  if (scherm === "keuze") return <KeuzeScherm onKies={k => setScherm(k === "werknemer" ? "werknemerKeuze" : "adminPin")} />;
 
   // ── Werknemer kiezen ──
   if (scherm === "werknemerKeuze") return (
     <WerknemerKeuze
       werknemers={werknemers}
-      onKies={w => { setActiefWerknemer(w); setScherm("werknemerPortaal"); }}
+      onKies={w => { setActiefWerknemer(w); setScherm("werknemerPin"); }}
       onTerug={() => setScherm("keuze")}
     />
   );
+
+  // ── Werknemer pin scherm ──
+  if (scherm === "werknemerPin" && actiefWerknemer) {
+    const w = werknemers.find(x => x.id === actiefWerknemer.id) || actiefWerknemer;
+    const heeftPin = !!w.pin;
+    return (
+      <PinScherm
+        titel={w.naam}
+        subtitel="Voer je pincode in"
+        avatar={w.naam.charAt(0)}
+        kleur={w.kleur}
+        isNieuw={!heeftPin}
+        onTerug={() => setScherm("werknemerKeuze")}
+        onSuccess={ingevoerdePin => {
+          if (!heeftPin) {
+            // Eerste keer: sla pin op
+            setWerknemers(prev => prev.map(x => x.id === w.id ? { ...x, pin: ingevoerdePin } : x));
+            setActiefWerknemer({ ...w, pin: ingevoerdePin });
+            setScherm("werknemerPortaal");
+          } else if (ingevoerdePin === w.pin) {
+            setScherm("werknemerPortaal");
+          } else {
+            // Wrong pin — PinScherm handles this via onSuccess only being called with correct value
+            // We need to signal failure - we'll handle in PinScherm via a prop
+            alert("Onjuiste pincode. Probeer opnieuw.");
+            setScherm("werknemerPin");
+          }
+        }}
+      />
+    );
+  }
+
+  // ── Admin pin scherm ──
+  if (scherm === "adminPin") {
+    const heeftPin = !!adminPin;
+    return (
+      <PinScherm
+        titel="Beheerder"
+        subtitel="Voer de beheerders pincode in"
+        avatar="⚙️"
+        kleur="#4A9EE0"
+        isNieuw={!heeftPin}
+        onTerug={() => setScherm("keuze")}
+        onSuccess={ingevoerdePin => {
+          if (!heeftPin) {
+            setAdminPin(ingevoerdePin);
+            try { localStorage.setItem(ADMIN_PIN_KEY, ingevoerdePin); } catch(e) {}
+            setScherm("admin");
+          } else if (ingevoerdePin === adminPin) {
+            setScherm("admin");
+          } else {
+            alert("Onjuiste pincode. Probeer opnieuw.");
+            setScherm("adminPin");
+          }
+        }}
+      />
+    );
+  }
 
   // ── Werknemer portaal ──
   if (scherm === "werknemerPortaal" && actiefWerknemer) {
@@ -513,6 +650,7 @@ export default function VakantieApp() {
           {opslagStatus === "opgeslagen" && <span style={{ fontSize: "12px", color: "#2D9B6F" }}>✓ Opgeslagen</span>}
           {opslagStatus === "fout" && <span style={{ fontSize: "12px", color: "#E05555" }}>❌ Fout!</span>}
           {problematisch.length > 0 && <div style={{ background: "rgba(224,85,85,0.15)", border: "1px solid rgba(224,85,85,0.4)", borderRadius: "20px", padding: "4px 12px", fontSize: "12px", color: "#E05555" }}>⚠️ {problematisch.length} conflict{problematisch.length > 1 ? "en" : ""}</div>}
+          <button onClick={() => { if (window.confirm("Beheerders pincode resetten? Je moet dan een nieuwe kiezen.")) { setAdminPin(null); try { localStorage.removeItem(ADMIN_PIN_KEY); } catch(e) {} setScherm("keuze"); } }} style={{ padding: "4px 10px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "#4A6A82", cursor: "pointer", fontSize: "11px", fontFamily: "Georgia, serif" }} title="Reset beheerders pincode">🔑</button>
         </div>
       </div>
 
@@ -532,6 +670,17 @@ export default function VakantieApp() {
             </div>
           ))}
         </div>
+
+        {/* Debug log panel */}
+        {debugLog.length > 0 && (
+          <div style={{ background: "#0D1A26", border: "1px solid rgba(74,158,224,0.2)", borderRadius: "10px", padding: "12px 16px", marginBottom: "20px", fontFamily: "monospace", fontSize: "12px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+              <span style={{ color: "#4A9EE0", fontFamily: "Georgia, serif", fontSize: "11px", letterSpacing: "1px", textTransform: "uppercase" }}>Verbinding log</span>
+              <button onClick={() => setDebugLog([])} style={{ background: "none", border: "none", color: "#7A9AB5", cursor: "pointer", fontSize: "11px" }}>wis</button>
+            </div>
+            {debugLog.map((l, i) => <div key={i} style={{ color: l.startsWith("❌") ? "#E05555" : l.startsWith("✅") ? "#2D9B6F" : "#B0BEC8", marginBottom: "2px" }}>{l}</div>)}
+          </div>
+        )}
 
         {/* ── AANVRAGEN ── */}
         {adminSub === "aanvragen" && (
@@ -576,6 +725,7 @@ export default function VakantieApp() {
                           <button onClick={() => handleStatusChange(aanvraag.id, "afgewezen")} style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid rgba(224,85,85,0.4)", background: "rgba(224,85,85,0.1)", color: "#E05555", cursor: "pointer", fontSize: "12px", fontFamily: "Georgia, serif" }}>✕ Wijs af</button>
                         </div>
                       )}
+                      <button onClick={() => { if (window.confirm("Aanvraag verwijderen?")) setAanvragen(prev => prev.filter(a => a.id !== aanvraag.id)); }} style={{ padding: "6px 10px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "#4A6A82", cursor: "pointer", fontSize: "13px" }} title="Verwijderen">🗑</button>
                     </div>
                   </div>
                 );
@@ -664,13 +814,17 @@ export default function VakantieApp() {
                       ) : <div style={{ fontSize: "11px", color: "#4A6A82", fontStyle: "italic" }}>Stel contracturen in om verlofuren te berekenen</div>}
                     </div>
                     {/* Stats */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", marginBottom: "10px" }}>
                       {[{ label: "Aanvragen", val: eigen.length, kleur: "#4A9EE0" }, { label: "Wachtend", val: openstaand, kleur: "#E8A838" }, { label: "Goedgekeurd", val: goed, kleur: "#2D9B6F" }].map(s => (
                         <div key={s.label} style={{ background: "rgba(255,255,255,0.04)", borderRadius: "8px", padding: "8px", textAlign: "center" }}>
                           <div style={{ fontSize: "18px", fontWeight: "bold", color: s.kleur }}>{s.val}</div>
                           <div style={{ fontSize: "10px", color: "#7A9AB5", marginTop: "2px" }}>{s.label}</div>
                         </div>
                       ))}
+                    </div>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      {w.pin && <button onClick={() => { if (window.confirm(`Pincode van "${w.naam}" resetten?`)) setWerknemers(prev => prev.map(x => x.id === w.id ? { ...x, pin: null } : x)); }} style={{ flex: 1, padding: "7px", borderRadius: "8px", border: "1px solid rgba(232,168,56,0.3)", background: "rgba(232,168,56,0.06)", color: "#E8A838", cursor: "pointer", fontSize: "12px", fontFamily: "Georgia, serif" }}>🔑 Reset pin</button>}
+                      <button onClick={() => { if (window.confirm(`Werknemer "${w.naam}" verwijderen? Alle aanvragen worden ook verwijderd.`)) { setWerknemers(prev => prev.filter(x => x.id !== w.id)); setAanvragen(prev => prev.filter(a => a.werknemerId !== w.id)); } }} style={{ flex: 1, padding: "7px", borderRadius: "8px", border: "1px solid rgba(224,85,85,0.25)", background: "rgba(224,85,85,0.06)", color: "#E05555", cursor: "pointer", fontSize: "12px", fontFamily: "Georgia, serif" }}>🗑 Verwijderen</button>
                     </div>
                   </div>
                 );
