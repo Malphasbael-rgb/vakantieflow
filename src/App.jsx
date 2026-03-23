@@ -1097,8 +1097,8 @@ export default function VakantieApp() {
   }, [pickerOpen]);
 
   // ── Supabase config ──
-  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-  const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
+  const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
+  const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY;
   const HEADERS = {
     "apikey": SUPABASE_KEY,
     "Authorization": "Bearer " + SUPABASE_KEY,
