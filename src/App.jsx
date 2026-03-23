@@ -1528,8 +1528,13 @@ export default function VakantieApp() {
                         </div>
                         {bewerkId === w.id ? (
                           <div style={{ display: "flex", gap: "6px" }}>
-                            <input autoFocus value={afdInvoer} onChange={e => setAfdInvoer(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && afdInvoer.trim()) { addAfdeling(w.id, afdInvoer); setAfdInvoer(""); } if (e.key === "Escape") { setBewerkId(null); setAfdInvoer(""); } }} placeholder="Naam afdeling + Enter" style={{ ...inputStyle, padding: "5px 10px", fontSize: "12px", flex: 1 }} />
-                            <button onClick={() => { addAfdeling(w.id, afdInvoer); setAfdInvoer(""); }} style={{ padding: "5px 10px", borderRadius: "7px", border: "none", background: "#2D9B6F", color: "#fff", cursor: "pointer" }}>✓</button>
+                            <select autoFocus value={afdInvoer} onChange={e => setAfdInvoer(e.target.value)} style={{ ...inputStyle, padding: "5px 10px", fontSize: "12px", flex: 1 }}>
+                              <option value="">Kies afdeling...</option>
+                              {["Hoofd FQA","Ass. Hoofd FQA","Micro","Orglab","Chemie","Vrijgave","FQA","Blik"]
+                                .filter(afd => !w.afdelingen.includes(afd))
+                                .map(afd => <option key={afd} value={afd}>{afd}</option>)}
+                            </select>
+                            <button onClick={() => { if (afdInvoer) { addAfdeling(w.id, afdInvoer); setAfdInvoer(""); setBewerkId(null); } }} style={{ padding: "5px 10px", borderRadius: "7px", border: "none", background: "#2D9B6F", color: "#fff", cursor: "pointer" }}>✓</button>
                             <button onClick={() => { setBewerkId(null); setAfdInvoer(""); }} style={{ padding: "5px 10px", borderRadius: "7px", border: "none", background: "rgba(255,255,255,0.08)", color: "#7A9AB5", cursor: "pointer" }}>✕</button>
                           </div>
                         ) : (
