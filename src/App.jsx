@@ -2159,40 +2159,45 @@ export default function VakantieApp() {
                 </div>
                 <span style={{ fontSize:"10px", color:"#4A6A82", marginLeft:"4px" }}>← sleep afdeling naar vakje</span>
                 <button onClick={() => {
-                    // Zoek de eerste 5 werkdagen in de huidige maand die data bevatten
-                    const werkdagenMetData = werkdagen.filter(({ dagStr }) =>
-                      weekTemplate?.[dagStr] && Object.keys(weekTemplate[dagStr]).length > 0
-                    );
-                    if (werkdagenMetData.length < 5) {
-                      alert("Vul eerst minimaal 5 werkdagen in om te kopiëren.");
+                    // ── Bepaal week 1 van de huidige maand (eerste 5 werkdagen) ──
+                    const alleMaandWerkdagen = werkdagen; // al gefilterd op ma-vr in huidige maand
+                    if (alleMaandWerkdagen.length < 5) {
+                      alert("Niet genoeg werkdagen in deze maand.");
                       return;
                     }
-                    // Neem de eerste 5 werkdagen met data als bronweek
-                    const bronDagen = werkdagenMetData.slice(0, 5);
-                    const bronDagStrs = bronDagen.map(d => d.dagStr);
-                    const laatsteBronDag = new Date(bronDagStrs[4]);
-                    // Bouw lijst van volgende 5 werkdagen na de bronweek
-                    const doelDagen = [];
-                    const cursor = new Date(laatsteBronDag);
-                    while (doelDagen.length < 5) {
-                      cursor.setDate(cursor.getDate() + 1);
-                      const str = `${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,"0")}-${String(cursor.getDate()).padStart(2,"0")}`;
-                      if (isWerkdag(str)) doelDagen.push(str);
+                    // Week 1 = eerste 5 werkdagen van de maand
+                    const week1 = alleMaandWerkdagen.slice(0, 5).map(d => d.dagStr);
+                    // Controleer of week 1 ingevuld is
+                    const week1Ingevuld = week1.some(dag => weekTemplate?.[dag] && Object.keys(weekTemplate[dag]).length > 0);
+                    if (!week1Ingevuld) {
+                      alert("Vul eerst week 1 van de maand in voordat je kopieert.");
+                      return;
                     }
+                    // ── Splits alle werkdagen van de maand in weken van 5 ──
+                    const weken = [];
+                    for (let i = 0; i < alleMaandWerkdagen.length; i += 5) {
+                      weken.push(alleMaandWerkdagen.slice(i, i + 5).map(d => d.dagStr));
+                    }
+                    // ── Zoek de eerste week (na week 1) zonder planning ──
+                    const doelWeek = weken.slice(1).find(week =>
+                      !week.some(dag => weekTemplate?.[dag] && Object.keys(weekTemplate[dag]).length > 0)
+                    );
+                    if (!doelWeek) {
+                      alert("Alle weken in deze maand hebben al een planning.");
+                      return;
+                    }
+                    // ── Kopieer week 1 naar doelweek, verlof overslaan ──
                     setWeekTemplate(prev => {
                       const nieuw = { ...prev };
-                      bronDagStrs.forEach((bron, i) => {
-                        const doel = doelDagen[i];
+                      week1.forEach((bron, i) => {
+                        const doel = doelWeek[i];
+                        if (!doel) return;
                         const bronData = JSON.parse(JSON.stringify(prev[bron] || {}));
-                        // Begin met de bestaande doeldag data als basis
                         const doelData = JSON.parse(JSON.stringify(prev[doel] || {}));
-                        // Loop door alle werknemers in de brondag
                         Object.keys(bronData).forEach(wId => {
                           if (heeftVerlof(parseInt(wId), doel)) {
-                            // Heeft verlof op doeldag → niet overschrijven, originele data behouden
-                            // (doelData[wId] blijft staan zoals het was)
+                            // Verlof op doeldag → niet overschrijven
                           } else {
-                            // Geen verlof → kopieer brondag data naar doeldag
                             doelData[wId] = bronData[wId];
                           }
                         });
@@ -2200,7 +2205,7 @@ export default function VakantieApp() {
                       });
                       return nieuw;
                     });
-                    alert(`Week gekopieerd naar ${doelDagen[0]} t/m ${doelDagen[4]}!\nWerknemers met verlof zijn overgeslagen.`);
+                    alert(`Week 1 gekopieerd naar ${doelWeek[0]} t/m ${doelWeek[doelWeek.length-1]}!\nWerknemers met verlof zijn overgeslagen.`);
                   }} style={{ background:"rgba(74,158,224,0.12)", border:"1px solid rgba(74,158,224,0.3)", color:"#4A9EE0", borderRadius:"8px", padding:"6px 14px", cursor:"pointer", fontSize:"12px", fontFamily:"Georgia, serif", fontWeight:"bold" }}>📋 Kopieer week →</button>
                 <button onClick={() => {
                     document.body.classList.add("rooster-print-active");
