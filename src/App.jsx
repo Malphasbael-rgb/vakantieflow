@@ -2168,27 +2168,42 @@ export default function VakantieApp() {
                       dag.setHours(0,0,0,0);
                       return dag;
                     };
+                    const heeftDagData = (dagStr) => !!(weekTemplate?.[dagStr] && Object.keys(weekTemplate[dagStr]).length > 0);
 
-                    const maandag = getMaandag(new Date());
-                    maandag.setDate(maandag.getDate() + weekOffset * 7);
+                    const eersteVanMaand = new Date(roosterJaar, roosterMaand, 1);
+                    const laatsteVanMaand = new Date(roosterJaar, roosterMaand + 1, 0);
+                    const startZoekgebied = getMaandag(eersteVanMaand);
+                    const eindZoekgebied = new Date(laatsteVanMaand);
+                    eindZoekgebied.setDate(eindZoekgebied.getDate() + 7);
+                    eindZoekgebied.setHours(0,0,0,0);
+
+                    let bronMaandag = null;
+                    for (let d = new Date(startZoekgebied); d <= eindZoekgebied; d.setDate(d.getDate() + 7)) {
+                      const weekDagen = [];
+                      for (let i = 0; i < 5; i++) {
+                        const wd = new Date(d);
+                        wd.setDate(wd.getDate() + i);
+                        weekDagen.push(fmt(wd));
+                      }
+                      if (weekDagen.some(heeftDagData)) {
+                        bronMaandag = new Date(d);
+                      }
+                    }
+
+                    if (!bronMaandag) {
+                      alert("Er is nog geen ingevulde week gevonden om te kopiëren.");
+                      return;
+                    }
 
                     const bronDagStrs = [];
                     for (let i = 0; i < 5; i++) {
-                      const d = new Date(maandag);
+                      const d = new Date(bronMaandag);
                       d.setDate(d.getDate() + i);
                       bronDagStrs.push(fmt(d));
                     }
 
-                    const heeftBronData = bronDagStrs.some(dagStr =>
-                      weekTemplate?.[dagStr] && Object.keys(weekTemplate[dagStr]).length > 0
-                    );
-                    if (!heeftBronData) {
-                      alert("Deze week bevat nog geen roosterdata om te kopiëren.");
-                      return;
-                    }
-
                     const doelDagen = [];
-                    const cursor = new Date(maandag);
+                    const cursor = new Date(bronMaandag);
                     cursor.setDate(cursor.getDate() + 4);
                     while (doelDagen.length < 5) {
                       cursor.setDate(cursor.getDate() + 1);
@@ -2212,8 +2227,7 @@ export default function VakantieApp() {
                       return nieuw;
                     });
 
-                    setWeekOffset(w => w + 1);
-                    alert(`Week gekopieerd naar ${doelDagen[0]} t/m ${doelDagen[4]}!
+                    alert(`Week gekopieerd van ${bronDagStrs[0]} t/m ${bronDagStrs[4]} naar ${doelDagen[0]} t/m ${doelDagen[4]}!
 Werknemers met verlof zijn overgeslagen.`);
                   }} style={{ background:"rgba(74,158,224,0.12)", border:"1px solid rgba(74,158,224,0.3)", color:"#4A9EE0", borderRadius:"8px", padding:"6px 14px", cursor:"pointer", fontSize:"12px", fontFamily:"Georgia, serif", fontWeight:"bold" }}>📋 Kopieer week →</button>
                 <button onClick={() => {
