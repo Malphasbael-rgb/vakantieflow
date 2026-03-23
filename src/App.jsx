@@ -1401,6 +1401,9 @@ export default function VakantieApp() {
                 {werknemers.map(w => <option key={w.id} value={w.id}>{w.naam}</option>)}
               </select>
               <span style={{ fontSize: "13px", color: "#7A9AB5", display: "flex", alignItems: "center" }}>{gefilterd.length} aanvra{gefilterd.length === 1 ? "ag" : "gen"}</span>
+              <div style={{ marginLeft: "auto" }}>
+                <button onClick={() => setConfirmModal({ vraag: `Weet je zeker dat je ALLE ${aanvragen.length} aanvragen wilt verwijderen? Dit kan niet ongedaan worden gemaakt.`, onJa: () => setAanvragen([]) })} style={{ padding: "8px 16px", borderRadius: "10px", border: "1px solid rgba(224,85,85,0.35)", background: "rgba(224,85,85,0.08)", color: "#E05555", cursor: "pointer", fontSize: "13px", fontFamily: "Georgia, serif" }}>🗑 Alle aanvragen verwijderen</button>
+              </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {gefilterd.map(aanvraag => {
