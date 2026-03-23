@@ -102,7 +102,8 @@ function werkdagen(van, tot) {
   const d = new Date(van);
   const eind = new Date(tot);
   while (d <= eind) {
-    const str = d.toISOString().split("T")[0];
+    // Gebruik lokale datum ipv UTC (toISOString geeft UTC terug, kan dag verschuiven in NL)
+    const str = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
     if (isWerkdag(str)) tel++;
     d.setDate(d.getDate() + 1);
   }
@@ -161,7 +162,7 @@ function getBezettingConflicten(aanvraag, alleAanvragen, werknemers) {
 
     // Loop door alle dagen van de aanvraag
     for (let d = new Date(van); d <= tot; d.setDate(d.getDate() + 1)) {
-      const dag = d.toISOString().split("T")[0];
+      const dag = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
       const aanwezig = aanwezigOpDag(dag, afd, aanvraag, alleAanvragen, werknemers);
       if (aanwezig < minimum) {
         conflicten.push({ afd, dag, aanwezig, minimum });
@@ -189,7 +190,11 @@ function isProblem(a, all, w) {
 
 function berekenVerlofUren(u) {
   if (!u || u <= 0) return null;
-  return Math.round((u / 40) * 25 * (u / 5));
+  // Wettelijk minimum: 4× contracturen per week = 4 × u uur/jaar
+  // Gebruikelijk: 25 vakantiedagen op basis van 40u/week, naar rato voor parttimers
+  // Formule: (contractUren / 5) dagen/week × 25 dagen/jaar × (contractUren / 5) uur/dag
+  // Correct: vakantiedagen naar rato × uren per dag = (25 × u/40) × (u/5)
+  return Math.round((25 * u / 40) * (u / 5));
 }
 function gebruikteVerlofUren(id, aanvragen, u) {
   if (!u) return 0;
@@ -278,7 +283,7 @@ function PinScherm({ titel, subtitel, avatar, kleur, onSuccess, onTerug, isNieuw
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  });
+  }, [pin, bevestig, stap, onSuccess]); // deps zodat handler altijd actuele state ziet
 
   function handleCijfer(c) {
     setFout("");
@@ -1092,8 +1097,8 @@ export default function VakantieApp() {
   }, [pickerOpen]);
 
   // ── Supabase config ──
-  const SUPABASE_URL = "https://pezqrqstakjegzegfxzo.supabase.co";
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlenFycXN0YWtqZWd6ZWdmeHpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNzk4MjYsImV4cCI6MjA4ODY1NTgyNn0.dgFLVz8BtH8T5f1AYzVgyuOHj5OixusfV6CW3e8Fh8A";
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
   const HEADERS = {
     "apikey": SUPABASE_KEY,
     "Authorization": "Bearer " + SUPABASE_KEY,
