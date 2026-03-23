@@ -2154,6 +2154,39 @@ export default function VakantieApp() {
                 </div>
                 <span style={{ fontSize:"10px", color:"#4A6A82", marginLeft:"4px" }}>← sleep afdeling naar vakje</span>
                 <button onClick={() => {
+                    // Zoek de eerste 5 werkdagen in de huidige maand die data bevatten
+                    const werkdagenMetData = werkdagen.filter(({ dagStr }) =>
+                      weekTemplate?.[dagStr] && Object.keys(weekTemplate[dagStr]).length > 0
+                    );
+                    if (werkdagenMetData.length < 5) {
+                      alert("Vul eerst minimaal 5 werkdagen in om te kopiëren.");
+                      return;
+                    }
+                    // Neem de eerste 5 werkdagen met data als bronweek
+                    const bronDagen = werkdagenMetData.slice(0, 5);
+                    // Zoek de 5 werkdagen direct erna (niet per se in dezelfde maand)
+                    const bronDagStrs = bronDagen.map(d => d.dagStr);
+                    const laatsteBronDag = new Date(bronDagStrs[4]);
+                    // Bouw lijst van volgende 5 werkdagen na de bronweek
+                    const doelDagen = [];
+                    const cursor = new Date(laatsteBronDag);
+                    while (doelDagen.length < 5) {
+                      cursor.setDate(cursor.getDate() + 1);
+                      const str = `${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,"0")}-${String(cursor.getDate()).padStart(2,"0")}`;
+                      if (isWerkdag(str)) doelDagen.push(str);
+                    }
+                    // Kopieer bronweek naar doelweek
+                    setWeekTemplate(prev => {
+                      const nieuw = { ...prev };
+                      bronDagStrs.forEach((bron, i) => {
+                        const doel = doelDagen[i];
+                        nieuw[doel] = JSON.parse(JSON.stringify(prev[bron] || {}));
+                      });
+                      return nieuw;
+                    });
+                    alert(`Week gekopieerd naar ${doelDagen[0]} t/m ${doelDagen[4]}!`);
+                  }} style={{ background:"rgba(74,158,224,0.12)", border:"1px solid rgba(74,158,224,0.3)", color:"#4A9EE0", borderRadius:"8px", padding:"6px 14px", cursor:"pointer", fontSize:"12px", fontFamily:"Georgia, serif", fontWeight:"bold" }}>📋 Kopieer week →</button>
+                <button onClick={() => {
                     document.body.classList.add("rooster-print-active");
                     window.print();
                     setTimeout(() => {
