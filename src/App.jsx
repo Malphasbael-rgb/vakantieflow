@@ -1086,7 +1086,8 @@ export default function VakantieApp() {
   const [weekTemplate, setWeekTemplate] = useState({});
   const [roosterMaand, setRoosterMaand] = useState(new Date().getMonth());
   const [roosterJaar, setRoosterJaar] = useState(new Date().getFullYear());
-  const [pickerOpen, setPickerOpen] = useState(null); // { dag, afd, deel }
+  const [roosterDoelWeek, setRoosterDoelWeek] = useState(2);
+  const [pickerOpen, setPickerOpen] = useState(null);
 
   // Sluit rooster picker bij klik buiten
   useEffect(() => {
@@ -2158,55 +2159,76 @@ export default function VakantieApp() {
                   ))}
                 </div>
                 <span style={{ fontSize:"10px", color:"#4A6A82", marginLeft:"4px" }}>← sleep afdeling naar vakje</span>
-                <button onClick={() => {
-                    // ── Bepaal week 1 van de huidige maand (eerste 5 werkdagen) ──
-                    const alleMaandWerkdagen = werkdagen; // al gefilterd op ma-vr in huidige maand
-                    if (alleMaandWerkdagen.length < 5) {
-                      alert("Niet genoeg werkdagen in deze maand.");
-                      return;
-                    }
-                    // Week 1 = eerste 5 werkdagen van de maand
-                    const week1 = alleMaandWerkdagen.slice(0, 5).map(d => d.dagStr);
-                    // Controleer of week 1 ingevuld is
-                    const week1Ingevuld = week1.some(dag => weekTemplate?.[dag] && Object.keys(weekTemplate[dag]).length > 0);
-                    if (!week1Ingevuld) {
-                      alert("Vul eerst week 1 van de maand in voordat je kopieert.");
-                      return;
-                    }
-                    // ── Splits alle werkdagen van de maand in weken van 5 ──
-                    const weken = [];
-                    for (let i = 0; i < alleMaandWerkdagen.length; i += 5) {
-                      weken.push(alleMaandWerkdagen.slice(i, i + 5).map(d => d.dagStr));
-                    }
-                    // ── Zoek de eerste week (na week 1) zonder planning ──
-                    const doelWeek = weken.slice(1).find(week =>
-                      !week.some(dag => weekTemplate?.[dag] && Object.keys(weekTemplate[dag]).length > 0)
-                    );
-                    if (!doelWeek) {
-                      alert("Alle weken in deze maand hebben al een planning.");
-                      return;
-                    }
-                    // ── Kopieer week 1 naar doelweek, verlof overslaan ──
-                    setWeekTemplate(prev => {
-                      const nieuw = { ...prev };
-                      week1.forEach((bron, i) => {
-                        const doel = doelWeek[i];
-                        if (!doel) return;
-                        const bronData = JSON.parse(JSON.stringify(prev[bron] || {}));
-                        const doelData = JSON.parse(JSON.stringify(prev[doel] || {}));
-                        Object.keys(bronData).forEach(wId => {
-                          if (heeftVerlof(parseInt(wId), doel)) {
-                            // Verlof op doeldag → niet overschrijven
-                          } else {
-                            doelData[wId] = bronData[wId];
-                          }
-                        });
-                        nieuw[doel] = doelData;
-                      });
-                      return nieuw;
+                {(() => {
+                    // ── Bouw kalenderweken van de maand ──
+                    // Groepeer werkdagen per kalenderweek (ma=1 t/m vr=5, zelfde ISO weeknummer)
+                    const wekenMap = {};
+                    werkdagen.forEach(({ dagStr, datum }) => {
+                      // Weeknummer op basis van maandag
+                      const d = new Date(datum);
+                      const dow = d.getDay() === 0 ? 7 : d.getDay();
+                      const maandag = new Date(d);
+                      maandag.setDate(d.getDate() - (dow - 1));
+                      const key = `${maandag.getFullYear()}-${String(maandag.getMonth()+1).padStart(2,"0")}-${String(maandag.getDate()).padStart(2,"0")}`;
+                      if (!wekenMap[key]) wekenMap[key] = [];
+                      wekenMap[key].push(dagStr);
                     });
-                    alert(`Week 1 gekopieerd naar ${doelWeek[0]} t/m ${doelWeek[doelWeek.length-1]}!\nWerknemers met verlof zijn overgeslagen.`);
-                  }} style={{ background:"rgba(74,158,224,0.12)", border:"1px solid rgba(74,158,224,0.3)", color:"#4A9EE0", borderRadius:"8px", padding:"6px 14px", cursor:"pointer", fontSize:"12px", fontFamily:"Georgia, serif", fontWeight:"bold" }}>📋 Kopieer week →</button>
+                    const alleWeken = Object.keys(wekenMap).sort().map(k => wekenMap[k]);
+                    // Eerste volledige week (5 werkdagen) = bronweek
+                    const bronWeek = alleWeken.find(w => w.length === 5);
+                    // Overige volledige weken = doelweken
+                    const doelWeken = alleWeken.filter(w => w !== bronWeek && w.length === 5);
+
+                    return (
+                      <div style={{ display:"flex", alignItems:"center", gap:"8px", flexWrap:"wrap" }}>
+                        <select
+                          value={roosterDoelWeek}
+                          onChange={e => setRoosterDoelWeek(parseInt(e.target.value))}
+                          style={{ ...inputStyle, width:"auto", padding:"5px 10px", fontSize:"12px", color:"#C8D8E8" }}
+                        >
+                          {doelWeken.map((week, idx) => (
+                            <option key={idx} value={idx}>
+                              → Week vanaf {week[0].slice(8)}/{week[0].slice(5,7)}
+                            </option>
+                          ))}
+                        </select>
+                        <button onClick={() => {
+                          if (!bronWeek) { alert("Geen volledige basisweek gevonden in deze maand."); return; }
+                          const bronIngevuld = bronWeek.some(dag => weekTemplate?.[dag] && Object.keys(weekTemplate[dag]).length > 0);
+                          if (!bronIngevuld) { alert("Vul eerst de eerste volledige week in voordat je kopieert."); return; }
+                          const doel = doelWeken[roosterDoelWeek];
+                          if (!doel) { alert("Geen doelweek geselecteerd."); return; }
+                          setWeekTemplate(prev => {
+                            const nieuw = { ...prev };
+                            bronWeek.forEach((bron, i) => {
+                              const doelDag = doel[i];
+                              if (!doelDag) return;
+                              const bronData = JSON.parse(JSON.stringify(prev[bron] || {}));
+                              const doelData = JSON.parse(JSON.stringify(prev[doelDag] || {}));
+                              Object.keys(bronData).forEach(wId => {
+                                if (!heeftVerlof(parseInt(wId), doelDag)) {
+                                  doelData[wId] = bronData[wId];
+                                }
+                              });
+                              nieuw[doelDag] = doelData;
+                            });
+                            return nieuw;
+                          });
+                          alert(`Basisweek gekopieerd naar week vanaf ${doel[0]}!\nWerknemers met verlof zijn overgeslagen.`);
+                        }} style={{ background:"rgba(74,158,224,0.12)", border:"1px solid rgba(74,158,224,0.3)", color:"#4A9EE0", borderRadius:"8px", padding:"6px 14px", cursor:"pointer", fontSize:"12px", fontFamily:"Georgia, serif", fontWeight:"bold" }}>📋 Kopieer basisweek →</button>
+                        <button onClick={() => {
+                          const doel = doelWeken[roosterDoelWeek];
+                          if (!doel) { alert("Geen doelweek geselecteerd."); return; }
+                          if (!window.confirm(`Week vanaf ${doel[0]} wissen?`)) return;
+                          setWeekTemplate(prev => {
+                            const nieuw = { ...prev };
+                            doel.forEach(dag => { delete nieuw[dag]; });
+                            return nieuw;
+                          });
+                        }} style={{ background:"rgba(224,85,85,0.1)", border:"1px solid rgba(224,85,85,0.3)", color:"#E05555", borderRadius:"8px", padding:"6px 14px", cursor:"pointer", fontSize:"12px", fontFamily:"Georgia, serif", fontWeight:"bold" }}>🗑 Week wissen</button>
+                      </div>
+                    );
+                })()}
                 <button onClick={() => {
                     document.body.classList.add("rooster-print-active");
                     window.print();
