@@ -8,7 +8,9 @@
     "react-scripts": "5.0.1"
   },
   "scripts": {
+    "prestart": "node scripts/patch-drag-drop.js",
     "start": "react-scripts start",
+    "prebuild": "node scripts/patch-drag-drop.js",
     "build": "react-scripts build"
   },
   "browserslist": {
